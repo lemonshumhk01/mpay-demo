@@ -1,10 +1,33 @@
-import { useState, useRef } from 'react';
+import { useRef, useMemo } from 'react';
 import './App.css';
 import axios from 'axios';
+import * as fns from 'date-fns';
+
+const merchantId = '1100539';
+const secureKey = '';
+const merchantTid = '001';
+const salt = 'faeXoo2eehu1oit8';
+
+const generateHash = (params) => {
+  let text = '';
+
+  for (const key in params) {
+    const v = params[key];
+    if (!v) continue;
+    text = text.concat(v);
+  }
+
+  return `${salt};${text};${secureKey}`;
+};
 
 function App() {
   const ref = useRef();
-  const fff = async (e) => {
+
+  const generateOrderNo = useMemo(() => {
+    return window.crypto.randomUUID();
+  }, []);
+
+  const submitPayment = async (e) => {
     try {
       e.preventDefault();
       const formData = new FormData(ref.current);
@@ -15,7 +38,11 @@ function App() {
         body[l] = v;
       }
 
-      await axios.post('https://demo.mobiletech.com.hk/MPay/MerchantPay.jsp', body);
+      const hash = generateHash(body);
+
+      body.hash = hash;
+
+      await axios.post('http://localhost:3001/payment', body);
     } catch (e) {
       console.error(e);
     }
@@ -24,36 +51,66 @@ function App() {
   return (
     <div className="App">
       <div className="card">
-        <form onSubmit={fff} ref={ref}>
-          version <input type="text" name="version" value="5.0" /> <p></p>
-          salt <input type="text" name="salt" value="whi1i7lifa70yhgs" /> <p></p>
-          accounttype <input type="text" name="accounttype" value="V" /> <p></p>
-          amt <input type="text" name="amt" value="30.0" /> <p></p>
-          currency <input type="text" name="currency" value="HKD" /> <p></p>
-          customerid <input type="text" name="customerid" value="12579841156496431634" /> <p></p>
-          customizeddata <input type="text" name="customizeddata" value="" /> <p></p>
-          datetime <input type="text" name="datetime" value="20180701010100" /> <p></p>
-          extrafield1 <input type="text" name="extrafield1" value="" /> <p></p>
-          extrafield2 <input type="text" name="extrafield2" value="" /> <p></p>
-          extrafield3 <input type="text" name="extrafield3" value="" /> <p></p>
-          locale <input type="text" name="locale" value="en_US" /> <p></p>
-          merchant_tid <input type="text" name="merchant_tid" value="001" /> <p></p>
-          merchantid <input type="text" name="merchantid" value="1100000" /> <p></p>
-          notifyurl <input type="text" name="notifyurl" value="https://demo.mpay.com/notify.jsp" /> <p></p>
-          ordernum <input type="text" name="ordernum" value="201807000001" /> <p></p>
-          paymethod <input type="text" name="paymethod" value="37" /> <p></p>
-          recurenddate <input type="text" name="recurenddate" value="" /> <p></p>
-          recurinterval <input type="text" name="recurinterval" value="" /> <p></p>
-          recurstartdate
-          <input type="text" name="recurstartdate" value="" /> <p></p>
-          recurunit <input type="text" name="recurunit" value="" /> <p></p>
-          returnurl <input type="text" name="returnurl" value="https://demo.mpay.com.hk/return.jsp" /> <p></p>
-          storeid
-          <input type="text" name="storeid" value="1" /> <p></p>
-          tokenid <input type="text" name="tokenid" value="101" /> <p></p>
-          hash{' '}
-          <input type="text" name="hash" value="0D959AA4CCBF2844B1DB7A3777772203712F31E04BAD9E208CB52BCA11FAF72B" />
-          <p></p>
+        <form onSubmit={submitPayment} ref={ref}>
+          <label htmlFor="salt">Salt</label>
+          <input id="salt" name="salt" type="text" defaultValue={salt} />
+          <label htmlFor="version">Version</label>
+          <input id="version " type="text" name="version" defaultValue="5.0" />
+          <label htmlFor="merchantid">Merchant ID</label>
+          <input id="merchantid" name="marchantid" defaultValue={merchantId} />
+          <label htmlFor="store_id">Store ID</label>
+          <input id="store_id" name="store_id" type="text" defaultValue={'1'} />
+          <label htmlFor="merchant_tid">Merchant Terminal ID</label>
+          <input id="merchant_tid" name="merchant_tid" type="text" defaultValue={merchantTid} />
+          <label htmlFor="ordernum">Order number</label>
+          <input id="ordernum" name="ordernum" defaultValue={generateOrderNo} />
+          <label htmlFor="datetime">Datetime</label>
+          <input id="datetime " name="datetime" defaultValue={fns.format(new Date(), 'yyyyMMddHHmmss')} />
+          <label htmlFor="amt">Amt (Amount)</label>
+          <input id="amt" name="amt" type="number" />
+          <label htmlFor="currency">Currency</label>
+          <select id="currency" name="currency" defaultValue="HKD">
+            <option value="HKD">HKD</option>
+            <option value="RMD">RMB</option>
+            <option value="USD">USD</option>
+          </select>
+          <label htmlFor="paymethod">Payment method</label>
+          <select id="paymethod" name="paymethod">
+            <option value={'0'}>Choose at mPay side</option>
+            <option value={'5'}>Alipay CN - PC</option>
+            <option value={'35'}>Alipay HK - PC</option>
+            <option value={'70'}>Visa/Mastercard - PC</option>
+          </select>
+          <label htmlFor="customizeddata">Remark message</label>
+          <textarea rows="5" id="customizeddata" name="customizeddata" />
+          <label htmlFor="returnurl">Return URL</label>
+          <input id="returnurl" name="returnurl" defaultValue={window.location.href} />
+          <label htmlFor="notifyurl">Notiy URL</label>
+          <input id="notifyurl" name="notifyurl" />
+          <label htmlFor="accounttype">Account type</label>
+          <select id="accounttype" name="accountype" defaultValue={'V'}>
+            <option value={'V'}>Visa</option>
+            <option value={'M'}>Mastercard</option>
+          </select>
+          <label htmlFor="customerid">customer ID</label>
+          <input id="customerid" name="customerid" />
+          <label htmlFor="tokenid">Token ID</label>
+          <input id="tokenid" name="tokenid" />
+          <label htmlFor="recuruint">recurunit</label>
+          <select id="recuruint" name="recuruint">
+            <option value="M">Month</option>
+          </select>
+          <label htmlFor="recurinterval" defaultValue="1">
+            recurinterval
+          </label>
+          <select>
+            <option value="1">1 - every month</option>
+            <option value="3">3 - every 3 months</option>
+          </select>
+          <label htmlFor="recurstartdate">recurstartdate</label>
+          <input id="recurstartdate" name="recurstartdate" />
+          <label htmlFor="recurenddate">recurenddate</label>
+          <input id="recurenddate" name="recurendate" />
           <button type="submit">Submit</button>
         </form>
       </div>
